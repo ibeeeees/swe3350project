@@ -20,50 +20,82 @@ public class EmployeeSearchPanel extends JPanel {
     public EmployeeSearchPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.employeeService = new EmployeeService();
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setLayout(new BorderLayout(0, 0));
+        setBackground(Theme.CONTENT_BG);
         initComponents();
     }
 
     private void initComponents() {
-        // Search bar
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        searchPanel.add(new JLabel("Search by:"));
+        JPanel wrapper = Theme.createContentWrapper();
+
+        // Header
+        JLabel header = new JLabel("Search Employees");
+        header.setFont(Theme.FONT_TITLE);
+        header.setForeground(Theme.PRIMARY);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        wrapper.add(header, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 16));
+        centerPanel.setOpaque(false);
+
+        // Search card
+        JPanel searchCard = Theme.createCard();
+        searchCard.setLayout(new BorderLayout(12, 0));
+
+        JPanel searchFields = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        searchFields.setOpaque(false);
+
+        JLabel searchByLabel = Theme.createFormLabel("Search by:");
+        searchFields.add(searchByLabel);
+
         searchTypeCombo = new JComboBox<>(new String[]{"Name", "DOB (yyyy-MM-dd)", "SSN", "Employee ID"});
-        searchPanel.add(searchTypeCombo);
-        searchField = new JTextField(20);
-        searchPanel.add(searchField);
-        JButton searchBtn = new JButton("Search");
-        searchPanel.add(searchBtn);
-        add(searchPanel, BorderLayout.NORTH);
+        searchTypeCombo.setFont(Theme.FONT_BODY);
+        searchTypeCombo.setPreferredSize(new Dimension(180, 36));
+        searchFields.add(searchTypeCombo);
+
+        searchField = Theme.createStyledTextField(22);
+        searchFields.add(searchField);
+
+        JButton searchBtn = Theme.createPrimaryButton("Search");
+        searchFields.add(searchBtn);
+
+        searchCard.add(searchFields, BorderLayout.CENTER);
+        centerPanel.add(searchCard, BorderLayout.NORTH);
 
         // Results table
-        String[] columns = {"EmpID", "First Name", "Last Name", "SSN", "DOB", "Email", "Phone", "Hire Date"};
+        String[] columns = {"Emp ID", "First Name", "Last Name", "SSN", "Date of Birth", "Email", "Phone", "Hire Date"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         resultTable = new JTable(tableModel);
         resultTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        resultTable.setRowHeight(25);
-        JScrollPane scrollPane = new JScrollPane(resultTable);
-        add(scrollPane, BorderLayout.CENTER);
+        Theme.styleTable(resultTable);
 
-        // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
-        JButton viewBtn = new JButton("View Details");
+        JScrollPane scrollPane = Theme.createStyledScrollPane(resultTable);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+
+        wrapper.add(centerPanel, BorderLayout.CENTER);
+
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        buttonPanel.setOpaque(false);
+
+        JButton viewBtn = Theme.createSecondaryButton("View Details");
         buttonPanel.add(viewBtn);
 
         if (AuthService.isAdmin()) {
-            JButton editBtn = new JButton("Edit");
-            JButton deleteBtn = new JButton("Delete");
+            JButton editBtn = Theme.createPrimaryButton("Edit Employee");
+            JButton deleteBtn = Theme.createDangerButton("Delete");
             buttonPanel.add(editBtn);
             buttonPanel.add(deleteBtn);
-
             editBtn.addActionListener(e -> openDetail(true));
             deleteBtn.addActionListener(e -> deleteSelected());
         }
-        add(buttonPanel, BorderLayout.SOUTH);
+
+        wrapper.add(buttonPanel, BorderLayout.SOUTH);
+
+        add(wrapper, BorderLayout.CENTER);
 
         searchBtn.addActionListener(e -> doSearch());
         searchField.addActionListener(e -> doSearch());
@@ -74,7 +106,8 @@ public class EmployeeSearchPanel extends JPanel {
         tableModel.setRowCount(0);
         String searchValue = searchField.getText().trim();
         if (searchValue.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter a search value.");
+            JOptionPane.showMessageDialog(this, "Please enter a search value.",
+                    "Search", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
@@ -107,7 +140,8 @@ public class EmployeeSearchPanel extends JPanel {
     private void openDetail(boolean editable) {
         int row = resultTable.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an employee.");
+            JOptionPane.showMessageDialog(this, "Please select an employee from the table.",
+                    "Selection Required", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Employee emp = currentResults.get(row);
@@ -117,13 +151,14 @@ public class EmployeeSearchPanel extends JPanel {
     private void deleteSelected() {
         int row = resultTable.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an employee to delete.");
+            JOptionPane.showMessageDialog(this, "Please select an employee to delete.",
+                    "Selection Required", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Employee emp = currentResults.get(row);
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to delete " + emp.getFirstName() + " " + emp.getLastName() + "?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                "Are you sure you want to delete " + emp.getFirstName() + " " + emp.getLastName() + "?\nThis action cannot be undone.",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             if (employeeService.deleteEmployee(emp.getEmpID())) {
                 JOptionPane.showMessageDialog(this, "Employee deleted successfully.");

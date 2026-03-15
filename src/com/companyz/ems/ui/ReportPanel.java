@@ -21,8 +21,8 @@ public class ReportPanel extends JPanel {
     public ReportPanel(String reportType, int empID) {
         this.reportType = reportType;
         this.empID = empID;
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setLayout(new BorderLayout());
+        setBackground(Theme.CONTENT_BG);
 
         switch (reportType) {
             case "paystubs": showPayStubs(); break;
@@ -33,12 +33,16 @@ public class ReportPanel extends JPanel {
     }
 
     private void showPayStubs() {
-        JLabel header = new JLabel("Pay Statement History");
-        header.setFont(new Font("SansSerif", Font.BOLD, 16));
-        add(header, BorderLayout.NORTH);
+        JPanel wrapper = Theme.createContentWrapper();
 
-        String[] columns = {"Pay Date", "Gross Pay", "Federal Tax", "State Tax", "Social Security",
-                "Medicare", "401(k)", "Health Ins.", "Net Pay"};
+        JLabel header = new JLabel("Pay Statement History");
+        header.setFont(Theme.FONT_TITLE);
+        header.setForeground(Theme.PRIMARY);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
+        wrapper.add(header, BorderLayout.NORTH);
+
+        String[] columns = {"Pay Date", "Gross Pay", "Federal Tax", "State Tax",
+                "Social Security", "Medicare", "401(k)", "Health Ins.", "Net Pay"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
@@ -48,50 +52,86 @@ public class ReportPanel extends JPanel {
         for (Payroll p : payHistory) {
             model.addRow(new Object[]{
                 p.getPayDate(),
-                String.format("$%.2f", p.getGrossPay()),
-                String.format("$%.2f", p.getFederalTax()),
-                String.format("$%.2f", p.getStateTax()),
-                String.format("$%.2f", p.getSocialSecurity()),
-                String.format("$%.2f", p.getMedicare()),
-                String.format("$%.2f", p.getRetirement401k()),
-                String.format("$%.2f", p.getHealthInsurance()),
-                String.format("$%.2f", p.getNetPay())
+                String.format("$%,.2f", p.getGrossPay()),
+                String.format("$%,.2f", p.getFederalTax()),
+                String.format("$%,.2f", p.getStateTax()),
+                String.format("$%,.2f", p.getSocialSecurity()),
+                String.format("$%,.2f", p.getMedicare()),
+                String.format("$%,.2f", p.getRetirement401k()),
+                String.format("$%,.2f", p.getHealthInsurance()),
+                String.format("$%,.2f", p.getNetPay())
             });
         }
 
         JTable table = new JTable(model);
-        table.setRowHeight(25);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        Theme.styleTable(table);
+        wrapper.add(Theme.createStyledScrollPane(table), BorderLayout.CENTER);
+
+        // Summary
+        double totalGross = payHistory.stream().mapToDouble(Payroll::getGrossPay).sum();
+        double totalNet = payHistory.stream().mapToDouble(Payroll::getNetPay).sum();
+        JPanel summary = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
+        summary.setOpaque(false);
+        JLabel totalLabel = new JLabel(String.format("Total Gross: $%,.2f   |   Total Net: $%,.2f   |   Records: %d",
+                totalGross, totalNet, payHistory.size()));
+        totalLabel.setFont(Theme.FONT_BODY_BOLD);
+        totalLabel.setForeground(Theme.PRIMARY);
+        summary.add(totalLabel);
+        wrapper.add(summary, BorderLayout.SOUTH);
+
+        add(wrapper, BorderLayout.CENTER);
     }
 
     private void showPayByJobTitle() {
+        JPanel wrapper = Theme.createContentWrapper();
+
         JLabel header = new JLabel("Total Pay by Job Title");
-        header.setFont(new Font("SansSerif", Font.BOLD, 16));
+        header.setFont(Theme.FONT_TITLE);
+        header.setForeground(Theme.PRIMARY);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
+        wrapper.add(header, BorderLayout.NORTH);
 
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        inputPanel.add(header);
+        JPanel card = Theme.createCard();
+        card.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 12, 8, 12);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        gbc.gridx = 0; gbc.gridy = 0;
+        card.add(Theme.createFormLabel("Job Title"), gbc);
+        gbc.gridx = 1;
         List<JobTitle> titles = jobTitleDAO.getAllJobTitles();
         JComboBox<JobTitle> titleCombo = new JComboBox<>(titles.toArray(new JobTitle[0]));
-        inputPanel.add(new JLabel("Job Title:"));
-        inputPanel.add(titleCombo);
+        titleCombo.setFont(Theme.FONT_BODY);
+        card.add(titleCombo, gbc);
 
-        JTextField monthField = new JTextField(4);
-        inputPanel.add(new JLabel("Month (1-12):"));
-        inputPanel.add(monthField);
+        gbc.gridx = 0; gbc.gridy = 1;
+        card.add(Theme.createFormLabel("Month (1-12)"), gbc);
+        gbc.gridx = 1;
+        JTextField monthField = Theme.createStyledTextField(8);
+        card.add(monthField, gbc);
 
-        JTextField yearField = new JTextField(6);
-        inputPanel.add(new JLabel("Year:"));
-        inputPanel.add(yearField);
+        gbc.gridx = 0; gbc.gridy = 2;
+        card.add(Theme.createFormLabel("Year"), gbc);
+        gbc.gridx = 1;
+        JTextField yearField = Theme.createStyledTextField(8);
+        card.add(yearField, gbc);
 
-        JButton genBtn = new JButton("Generate");
-        inputPanel.add(genBtn);
-        add(inputPanel, BorderLayout.NORTH);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.insets = new Insets(16, 12, 8, 12);
+        JButton genBtn = Theme.createPrimaryButton("Generate Report");
+        card.add(genBtn, gbc);
 
+        gbc.gridy = 4;
+        gbc.insets = new Insets(20, 12, 8, 12);
         JLabel resultLabel = new JLabel(" ");
-        resultLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        resultLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        resultLabel.setForeground(Theme.ACCENT);
         resultLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        add(resultLabel, BorderLayout.CENTER);
+        card.add(resultLabel, gbc);
+
+        wrapper.add(card, BorderLayout.CENTER);
+        add(wrapper, BorderLayout.CENTER);
 
         genBtn.addActionListener(e -> {
             try {
@@ -99,7 +139,7 @@ public class ReportPanel extends JPanel {
                 int year = Integer.parseInt(yearField.getText().trim());
                 String title = ((JobTitle) titleCombo.getSelectedItem()).getJobTitle();
                 double total = payrollService.getTotalPayByJobTitle(title, month, year);
-                resultLabel.setText(String.format("Total Pay for '%s' in %d/%d: $%.2f", title, month, year, total));
+                resultLabel.setText(String.format("Total: $%,.2f", total));
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Please enter valid month and year.");
             }
@@ -107,33 +147,55 @@ public class ReportPanel extends JPanel {
     }
 
     private void showPayByDivision() {
+        JPanel wrapper = Theme.createContentWrapper();
+
         JLabel header = new JLabel("Total Pay by Division");
-        header.setFont(new Font("SansSerif", Font.BOLD, 16));
+        header.setFont(Theme.FONT_TITLE);
+        header.setForeground(Theme.PRIMARY);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
+        wrapper.add(header, BorderLayout.NORTH);
 
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        inputPanel.add(header);
+        JPanel card = Theme.createCard();
+        card.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 12, 8, 12);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        gbc.gridx = 0; gbc.gridy = 0;
+        card.add(Theme.createFormLabel("Division"), gbc);
+        gbc.gridx = 1;
         List<Division> divisions = divisionDAO.getAllDivisions();
         JComboBox<Division> divCombo = new JComboBox<>(divisions.toArray(new Division[0]));
-        inputPanel.add(new JLabel("Division:"));
-        inputPanel.add(divCombo);
+        divCombo.setFont(Theme.FONT_BODY);
+        card.add(divCombo, gbc);
 
-        JTextField monthField = new JTextField(4);
-        inputPanel.add(new JLabel("Month (1-12):"));
-        inputPanel.add(monthField);
+        gbc.gridx = 0; gbc.gridy = 1;
+        card.add(Theme.createFormLabel("Month (1-12)"), gbc);
+        gbc.gridx = 1;
+        JTextField monthField = Theme.createStyledTextField(8);
+        card.add(monthField, gbc);
 
-        JTextField yearField = new JTextField(6);
-        inputPanel.add(new JLabel("Year:"));
-        inputPanel.add(yearField);
+        gbc.gridx = 0; gbc.gridy = 2;
+        card.add(Theme.createFormLabel("Year"), gbc);
+        gbc.gridx = 1;
+        JTextField yearField = Theme.createStyledTextField(8);
+        card.add(yearField, gbc);
 
-        JButton genBtn = new JButton("Generate");
-        inputPanel.add(genBtn);
-        add(inputPanel, BorderLayout.NORTH);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.insets = new Insets(16, 12, 8, 12);
+        JButton genBtn = Theme.createPrimaryButton("Generate Report");
+        card.add(genBtn, gbc);
 
+        gbc.gridy = 4;
+        gbc.insets = new Insets(20, 12, 8, 12);
         JLabel resultLabel = new JLabel(" ");
-        resultLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        resultLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        resultLabel.setForeground(Theme.ACCENT);
         resultLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        add(resultLabel, BorderLayout.CENTER);
+        card.add(resultLabel, gbc);
+
+        wrapper.add(card, BorderLayout.CENTER);
+        add(wrapper, BorderLayout.CENTER);
 
         genBtn.addActionListener(e -> {
             try {
@@ -141,7 +203,7 @@ public class ReportPanel extends JPanel {
                 int year = Integer.parseInt(yearField.getText().trim());
                 String div = ((Division) divCombo.getSelectedItem()).getDivName();
                 double total = payrollService.getTotalPayByDivision(div, month, year);
-                resultLabel.setText(String.format("Total Pay for '%s' in %d/%d: $%.2f", div, month, year, total));
+                resultLabel.setText(String.format("Total: $%,.2f", total));
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Please enter valid month and year.");
             }
@@ -149,31 +211,55 @@ public class ReportPanel extends JPanel {
     }
 
     private void showNewHires() {
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        JPanel wrapper = Theme.createContentWrapper();
+
         JLabel header = new JLabel("New Employee Hires Report");
-        header.setFont(new Font("SansSerif", Font.BOLD, 16));
-        inputPanel.add(header);
+        header.setFont(Theme.FONT_TITLE);
+        header.setForeground(Theme.PRIMARY);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
+        wrapper.add(header, BorderLayout.NORTH);
 
-        JTextField startField = new JTextField(10);
-        inputPanel.add(new JLabel("Start Date (yyyy-MM-dd):"));
-        inputPanel.add(startField);
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 16));
+        centerPanel.setOpaque(false);
 
-        JTextField endField = new JTextField(10);
-        inputPanel.add(new JLabel("End Date (yyyy-MM-dd):"));
-        inputPanel.add(endField);
+        // Input card
+        JPanel inputCard = Theme.createCard();
+        inputCard.setLayout(new GridBagLayout());
+        GridBagConstraints igbc = new GridBagConstraints();
+        igbc.insets = new Insets(6, 8, 6, 8);
+        igbc.fill = GridBagConstraints.HORIZONTAL;
+        igbc.anchor = GridBagConstraints.WEST;
 
-        JButton genBtn = new JButton("Generate");
-        inputPanel.add(genBtn);
-        add(inputPanel, BorderLayout.NORTH);
+        igbc.gridx = 0; igbc.gridy = 0;
+        inputCard.add(Theme.createFormLabel("Start Date (yyyy-MM-dd):"), igbc);
+        igbc.gridx = 1;
+        JTextField startField = Theme.createStyledTextField(12);
+        inputCard.add(startField, igbc);
 
-        String[] columns = {"EmpID", "First Name", "Last Name", "SSN", "DOB", "Email", "Phone", "Hire Date"};
+        igbc.gridx = 2;
+        inputCard.add(Theme.createFormLabel("End Date (yyyy-MM-dd):"), igbc);
+        igbc.gridx = 3;
+        JTextField endField = Theme.createStyledTextField(12);
+        inputCard.add(endField, igbc);
+
+        igbc.gridx = 4;
+        JButton genBtn = Theme.createPrimaryButton("Generate Report");
+        inputCard.add(genBtn, igbc);
+
+        centerPanel.add(inputCard, BorderLayout.NORTH);
+
+        // Results table
+        String[] columns = {"Emp ID", "First Name", "Last Name", "SSN", "DOB", "Email", "Phone", "Hire Date"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         };
         JTable table = new JTable(model);
-        table.setRowHeight(25);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        Theme.styleTable(table);
+        centerPanel.add(Theme.createStyledScrollPane(table), BorderLayout.CENTER);
+
+        wrapper.add(centerPanel, BorderLayout.CENTER);
+        add(wrapper, BorderLayout.CENTER);
 
         genBtn.addActionListener(e -> {
             try {
